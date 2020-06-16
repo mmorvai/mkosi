@@ -3351,7 +3351,20 @@ def calculate_bmap(args: CommandLineArguments, raw: Optional[BinaryIO]) -> Optio
 
 
 def save_cache(args: CommandLineArguments, root: str, raw: Optional[str], cache_path: Optional[str]) -> None:
-    if cache_path is None or raw is None:
+    if cache_path is None:
+        return
+
+    # bail out if cache already exists
+    if os.path.exists(cache_path):
+        return
+
+    # only continue if output format is supported for caching
+    if not (args.output_format.is_disk_rw() or
+            args.output_format in (OutputFormat.directory, OutputFormat.plain_squashfs, OutputFormat.tar)):
+        return
+
+    # for disk images raw cannot be None
+    if args.output_format.is_disk_rw() and raw is None:
         return
 
     with complete_step('Installing cache copy ',
@@ -3360,7 +3373,7 @@ def save_cache(args: CommandLineArguments, root: str, raw: Optional[str], cache_
         if args.output_format.is_disk_rw():
             os.chmod(raw, 0o666 & ~args.original_umask)
             shutil.move(raw, cache_path)
-        else:
+        elif args.output_format in (OutputFormat.directory, OutputFormat.plain_squashfs, OutputFormat.tar):
             shutil.move(root, cache_path)
 
 
@@ -4340,7 +4353,8 @@ def load_args(args: CommandLineArguments) -> CommandLineArguments:
         die("Minimal file systems only supported for ext4 and btrfs.")
 
     if args.generated_root() and args.incremental:
-        die("Sorry, incremental mode is currently not supported for squashfs or minimized file systems.")
+        if args.output_format != OutputFormat.plain_squashfs:
+            die("Sorry, incremental mode is currently not supported for squashfs or minimized file systems.")
 
     if args.bootable:
         if args.output_format in (OutputFormat.directory, OutputFormat.subvolume, OutputFormat.tar):
@@ -4681,14 +4695,20 @@ def reuse_cache_tree(args: CommandLineArguments,
 
     if not args.incremental:
         return False
-    if for_cache:
-        return False
     if args.output_format.is_disk_rw():
         return False
 
     fname = args.cache_pre_dev if do_run_build_script else args.cache_pre_inst
     if fname is None:
         return False
+
+    if for_cache:
+        if fname and os.path.isdir(fname):
+            # Cache already generated, skip generation, note that manually removing the exising cache images is
+            # necessary if Packages or BuildPackages change
+            return True
+        else:
+            return False
 
     with complete_step('Copying in cached tree ' + fname):
         try:
@@ -4766,6 +4786,9 @@ def build_image(args: CommandLineArguments,
 
                 with mount_cache(args, root):
                     cached = reuse_cache_tree(args, root, do_run_build_script, for_cache, cached)
+                    if for_cache and cached:
+                        # Found existing cached root tree, exiting build_image
+                        return None, None, None
                     install_skeleton_trees(args, root, for_cache)
                     install_distribution(args, root, do_run_build_script=do_run_build_script, cached=cached)
                     install_etc_hostname(args, root)
@@ -4934,15 +4957,13 @@ def build_stuff(args: CommandLineArguments) -> None:
                 # Generate the cache version of the build image, and store it as "cache-pre-dev"
                 raw, tar, root_hash = build_image(args, root, do_run_build_script=True, for_cache=True)
                 save_cache(args, root, raw.name if raw is not None else None, args.cache_pre_dev)
-
                 remove_artifacts(args, root, raw, tar, do_run_build_script=True)
 
         with complete_step("Running second (final) stage to generate cached copy"):
             # Generate the cache version of the build image, and store it as "cache-pre-inst"
             raw, tar, root_hash = build_image(args, root, do_run_build_script=False, for_cache=True)
-            if raw:
-                save_cache(args, root, raw.name, args.cache_pre_inst)
-                remove_artifacts(args, root, raw, tar, do_run_build_script=False)
+            save_cache(args, root, raw.name if raw is not None else None, args.cache_pre_inst)
+            remove_artifacts(args, root, raw, tar, do_run_build_script=False)
 
     if args.build_script:
         with complete_step("Running first (development) stage"):
