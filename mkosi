@@ -2508,10 +2508,10 @@ def run_prepare_script(args: CommandLineArguments, root: str, do_run_build_scrip
         # just copy the file anyway.
 
         shutil.copy2(args.prepare_script,
-                     os.path.join(workspace, "root", "root/prepare"))
+                     os.path.join(root, "root", "root/prepare"))
 
-        run_workspace_command(args, workspace, "/root/prepare", verb, network=args.with_network)
-        os.unlink(os.path.join(workspace, "root", "root/prepare"))
+        run_workspace_command(args, root, "/root/prepare", verb, network=args.with_network)
+        os.unlink(os.path.join(root, "root", "root/prepare"))
 
 
 def run_postinst_script(args: CommandLineArguments, root: str, do_run_build_script: bool, for_cache: bool) -> None:
