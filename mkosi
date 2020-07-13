@@ -2510,7 +2510,7 @@ def run_prepare_script(args: CommandLineArguments, root: str, do_run_build_scrip
         shutil.copy2(args.prepare_script,
                      os.path.join(root, "root/prepare"))
 
-        run_workspace_command(args, root, "/root/prepare", verb, network=args.with_network)
+        run_workspace_command(args, root, "/root/prepare", verb, network=True)
         os.unlink(os.path.join(root, "root/prepare"))
 
 
