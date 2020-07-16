@@ -459,7 +459,7 @@ completestep = cast(Callable[[str], Callable[[C], C]], complete_step)
 def init_namespace(args: CommandLineArguments) -> None:
     args.original_umask = os.umask(0o000)
     unshare(CLONE_NEWNS)
-    #run(["mount", "--make-rslave", "/"], check=True)
+    run(["mount", "--make-rslave", "/"], check=True)
 
 
 def setup_workspace(args: CommandLineArguments) -> tempfile.TemporaryDirectory:
@@ -5186,7 +5186,7 @@ def run_verb(args):
     if needs_build:
         check_root()
         check_native(args)
-        init_namespace(args)
+        #init_namespace(args)
         build_stuff(args)
         print_output_size(args)
 
