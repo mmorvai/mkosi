@@ -459,7 +459,7 @@ completestep = cast(Callable[[str], Callable[[C], C]], complete_step)
 def init_namespace(args: CommandLineArguments) -> None:
     args.original_umask = os.umask(0o000)
     unshare(CLONE_NEWNS)
-    run(["mount", "--make-rslave", "/"], check=True)
+    #run(["mount", "--make-rslave", "/"], check=True)
 
 
 def setup_workspace(args: CommandLineArguments) -> tempfile.TemporaryDirectory:
@@ -5046,6 +5046,7 @@ def check_root() -> None:
 
 
 def check_native(args: CommandLineArguments) -> None:
+    return
     if args.architecture is not None and args.architecture != platform.machine() and args.build_script:
         die('Cannot (currently) override the architecture and run build commands')
 
